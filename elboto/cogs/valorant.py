@@ -23,7 +23,7 @@ from elboto.utils import DATA_DIR
 
 def _read_ranks() -> Dict[str, str]:
     with (DATA_DIR / "valorant" / "ranks.json").open() as fp:
-        return cast(Dict[str, str], json.load(fp)['Ranks'])
+        return cast(Dict[str, str], json.load(fp)["Ranks"])
 
 
 _RANK_NAMES = _read_ranks()
@@ -186,8 +186,12 @@ class RiotAPIClient:
     async def get_current_compet_stats(
         self, player_id: str
     ) -> Optional[Tuple[int, int, datetime.datetime]]:
-        for start_index in range(0, 100, 20):
-            mmr_data = await self.get_mmr(player_id, start_index, start_index + 20)
+        start_index = 0
+        for num_records in [5, 10, 20, 20]:
+            mmr_data = await self.get_mmr(
+                player_id, start_index, start_index + num_records - 1
+            )
+            start_index += num_records
             assert (
                 mmr_data["Subject"] == player_id
             ), "MMR data should belong to the player"
