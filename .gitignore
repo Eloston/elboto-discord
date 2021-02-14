@@ -1,0 +1,11 @@
+# Python and testing/linting excludes
+__pycache__/
+/.mypy_cache
+/.coverage
+*.py[cod]
+
+# IDE/Editor exludes
+/.vscode
+
+# Project excludes
+/config.py
