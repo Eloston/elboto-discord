@@ -17,3 +17,7 @@ class Extra(Cog):
 
 def setup(bot: Elboto) -> None:
     bot.add_cog(Extra(bot))
+
+
+def teardown(bot: Elboto) -> None:
+    bot.remove_cog('Extra')

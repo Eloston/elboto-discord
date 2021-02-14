@@ -15,7 +15,11 @@ class Admin(Cog):
         # This Cog can only be invoked by the author
         return await self.bot.is_owner(ctx.author)
 
-    @commands.command(hidden=True)
+    @commands.group(hidden=True)
+    async def admin(self, ctx: Context) -> None:
+        pass
+
+    @admin.command(hidden=True)
     async def load(self, ctx: Context, *, module: str) -> None:
         """Loads a module."""
         try:
@@ -25,7 +29,7 @@ class Admin(Cog):
         else:
             await ctx.message.add_reaction("\N{OK HAND SIGN}")
 
-    @commands.command(hidden=True)
+    @admin.command(hidden=True)
     async def unload(self, ctx: Context, *, module: str) -> None:
         """Unloads a module."""
         try:
@@ -35,7 +39,7 @@ class Admin(Cog):
         else:
             await ctx.message.add_reaction("\N{OK HAND SIGN}")
 
-    @commands.command(name="reload", hidden=True)
+    @admin.command(name="reload", hidden=True)
     async def _reload(self, ctx: Context, *, module: str) -> None:
         """Reloads a module."""
         try:
@@ -48,7 +52,7 @@ class Admin(Cog):
         else:
             await ctx.message.add_reaction("\N{OK HAND SIGN}")
 
-    @commands.command(aliases=["invite"])
+    @admin.command(aliases=["invite"])
     async def join(self, ctx: Context) -> None:
         """Joins a server."""
         perms = discord.Permissions.none()
@@ -63,3 +67,7 @@ class Admin(Cog):
 
 def setup(bot: Elboto) -> None:
     bot.add_cog(Admin(bot))
+
+
+def teardown(bot: Elboto) -> None:
+    bot.remove_cog('Admin')

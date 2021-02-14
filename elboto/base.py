@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
 
 import sys
+from typing import Dict, Tuple
+
 from discord.ext.typed_commands import Bot
 
 _DESCRIPTION = """
 Eloston's Discord bot
 """
-_STARTUP_EXTENSIONS = ("elboto.cogs.admin", "elboto.cogs.valorant")
+_STARTUP_EXTENSIONS = ("elboto.cogs.admin", "elboto.cogs.valorant", "elboto.cogs.extra")
 
 
 class BotConfig:
     command_prefix: str
     token: str
     client_id: str
+    valorant_creds: Dict[str, Tuple[str, str]]
 
 
 class Elboto(Bot):
