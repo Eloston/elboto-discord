@@ -14,11 +14,7 @@ from aiohttp import ClientSession
 from discord.ext.typed_commands import Cog, CommandError, Context
 
 from elboto.base import Elboto
-from elboto.utils import DATA_DIR
-
-# We need to use the undocumented VALORANT API
-# Third-party docs: https://github.com/RumbleMike/ValorantClientAPI
-# Implementation: https://github.com/RumbleMike/ValorantStreamOverlay
+from elboto.utils import DATA_DIR, PersistDictStorage
 
 
 def _read_ranks() -> Dict[str, str]:
@@ -45,6 +41,9 @@ class RiotAPIRegion(str, enum.Enum):
 
 
 class RiotAPIClient:
+    # Third-party docs: https://github.com/RumbleMike/ValorantClientAPI
+    # Implementation: https://github.com/RumbleMike/ValorantStreamOverlay
+
     def __init__(
         self,
         session: ClientSession,
@@ -196,17 +195,21 @@ class RiotAPIClient:
                 puuid, start_index, start_index + num_records - 1
             )
             if "errorCode" in mmr_data:
-                raise RiotAPIError(f"Error retrieving MMR data in range {start_index}->{start_index+num_records}: {mmr_data}")
+                raise RiotAPIError(
+                    f"Error retrieving MMR data in range {start_index}->{start_index+num_records}: {mmr_data}"
+                )
             if "Matches" not in mmr_data:
                 print(f"No Matches key in MMR data (puuid: {puuid}): {mmr_data}")
-                raise RiotAPIError(f"Did not find Matches key in MMR data range {start_index}->{start_index+num_records}")
+                raise RiotAPIError(
+                    f"Did not find Matches key in MMR data range {start_index}->{start_index+num_records}"
+                )
             if not mmr_data["Matches"]:
                 # No match data found
-                raise RiotAPIError(f"Did not find any matches in MMR data range {start_index}->{start_index+num_records}")
+                raise RiotAPIError(
+                    f"Did not find any matches in MMR data range {start_index}->{start_index+num_records}"
+                )
             start_index += num_records
-            assert (
-                mmr_data["Subject"] == puuid
-            ), "MMR data should belong to the player"
+            assert mmr_data["Subject"] == puuid, "MMR data should belong to the player"
             for match in mmr_data["Matches"]:
                 if (
                     match["TierAfterUpdate"] == 0
@@ -228,6 +231,7 @@ class Valorant(Cog):
     def __init__(self, bot: Elboto):
         self.bot = bot
 
+        self._persist_dict = PersistDictStorage("valorant")
         self._clients: Dict[RiotAPIRegion, RiotAPIClient] = dict()
 
     async def cog_check(self, ctx: Context) -> bool:
