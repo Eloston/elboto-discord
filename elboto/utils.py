@@ -12,14 +12,13 @@ _PERSIST_STORAGE_DIR = Path(__file__).parent.parent / "runtime"
 class PersistDictStorage:
     def __init__(self, name: str):
         self.name = name.lower()
-        self._filepath: Path = _PERSIST_STORAGE_DIR
+        self._filepath: Path = _PERSIST_STORAGE_DIR / f"{self.name}.json"
         self._cache: Dict[str, Any] = dict()
 
         if self._filepath.exists():
             self._cache = json.loads(self._filepath.read_text())
         else:
             _PERSIST_STORAGE_DIR.mkdir(exist_ok=True)
-            self._filepath.parent.mkdir(exist_ok=True)
 
     def _flush_cache(self) -> None:
         text = json.dumps(self._cache)
