@@ -33,6 +33,10 @@ class RiotAuthError(Exception):
     pass
 
 
+class RiotAPIError(Exception):
+    pass
+
+
 class RiotAPIRegion(str, enum.Enum):
     NA = "na"  # North America
     EU = "eu"  # Europe
@@ -171,29 +175,37 @@ class RiotAPIClient:
             return cast(Dict[str, str], await response.json())
 
     async def get_mmr(
-        self, player_id: str, start_index: int = 0, end_index: int = 20
+        self, puuid: str, start_index: int = 0, end_index: int = 20
     ) -> Dict[str, Any]:
         # Refer:
         # - https://github.com/RumbleMike/ValorantStreamOverlay/blob/4737044373e9e467468481f8965d27217260009b/RankDetection.cs#L37-L72
         # - https://github.com/RumbleMike/ValorantClientAPI/blob/master/Docs/PlayerMMR.md
         await self.refresh_tokens()
         async with self.session.get(
-            f"{self._pd_endpoint}/mmr/v1/players/{player_id}/competitiveupdates?startIndex={start_index}&endIndex={end_index}",
+            f"{self._pd_endpoint}/mmr/v1/players/{puuid}/competitiveupdates?startIndex={start_index}&endIndex={end_index}",
             headers=self._get_full_headers(),
         ) as response:
             return cast(Dict[str, Any], json.loads(await response.text()))
 
     async def get_current_compet_stats(
-        self, player_id: str
+        self, puuid: str
     ) -> Optional[Tuple[int, int, datetime.datetime]]:
         start_index = 0
         for num_records in [5, 10, 20, 20]:
             mmr_data = await self.get_mmr(
-                player_id, start_index, start_index + num_records - 1
+                puuid, start_index, start_index + num_records - 1
             )
+            if "errorCode" in mmr_data:
+                raise RiotAPIError(f"Error retrieving MMR data in range {start_index}->{start_index+num_records}: {mmr_data}")
+            if "Matches" not in mmr_data:
+                print(f"No Matches key in MMR data (puuid: {puuid}): {mmr_data}")
+                raise RiotAPIError(f"Did not find Matches key in MMR data range {start_index}->{start_index+num_records}")
+            if not mmr_data["Matches"]:
+                # No match data found
+                raise RiotAPIError(f"Did not find any matches in MMR data range {start_index}->{start_index+num_records}")
             start_index += num_records
             assert (
-                mmr_data["Subject"] == player_id
+                mmr_data["Subject"] == puuid
             ), "MMR data should belong to the player"
             for match in mmr_data["Matches"]:
                 if (
@@ -229,7 +241,7 @@ class Valorant(Cog):
     async def cog_command_error(self, ctx: Context, error: CommandError) -> None:
         await ctx.reply(f"Error executing command: `{error}`")
 
-    def _get_client(self, region: RiotAPIRegion) -> RiotAPIClient:
+    def _get_backend_client(self, region: RiotAPIRegion) -> RiotAPIClient:
         if region not in self._clients:
             username, password = self.bot.config.valorant_creds[region]
             if username is None or password is None:
@@ -252,13 +264,13 @@ class Valorant(Cog):
     @valo_admin.command()
     async def forcerefresh(self, ctx: Context, region: RiotAPIRegion) -> None:
         async with ctx.typing():
-            await self._get_client(region).refresh_tokens(True)
+            await self._get_backend_client(region).refresh_tokens(True)
             await ctx.message.add_reaction("\N{OK HAND SIGN}")
 
     @valo_admin.command()
     async def userinfo(self, ctx: Context, region: RiotAPIRegion) -> None:
         async with ctx.typing():
-            data = await self._get_client(region).get_userinfo()
+            data = await self._get_backend_client(region).get_userinfo()
             await ctx.reply(f"""```json\n{json.dumps(data, indent=2)}\n```""")
 
     @valo.command()
@@ -266,23 +278,25 @@ class Valorant(Cog):
         self,
         ctx: Context,
         region: RiotAPIRegion,
-        player_id: str,
+        puuid: str,
         start_index: int,
         end_index: int,
     ) -> None:
         async with ctx.typing():
-            data = await self._get_client(region).get_mmr(
-                player_id, start_index, end_index
+            data = await self._get_backend_client(region).get_mmr(
+                puuid, start_index, end_index
             )
             data_io = io.BytesIO(json.dumps(data, indent=2).encode("UTF-8"))
             await ctx.reply(
-                "See attachment", file=discord.File(data_io, f"mmr_{player_id}.json")
+                "See attachment", file=discord.File(data_io, f"mmr_{puuid}.json")
             )
 
     @valo.command()
-    async def rank(self, ctx: Context, region: RiotAPIRegion, player_id: str) -> None:
+    async def rank(self, ctx: Context, region: RiotAPIRegion, puuid: str) -> None:
         async with ctx.typing():
-            data = await self._get_client(region).get_current_compet_stats(player_id)
+            data = await self._get_backend_client(region).get_current_compet_stats(
+                puuid
+            )
             if data is None:
                 await ctx.reply("Unable to find rank data from match history")
             else:
