@@ -213,11 +213,35 @@ class RiotAPIClient:
         return None
 
 
-class Henrik2APIClient:
+class Henrik3APIError(Exception):
+    def __init__(self, code: int, message: str):
+        super().__init__(f"Henrik-3 API error {code}: {message}")
+        self.code = code
+        self.message = message
+
+
+class Henrik3APIClient:
     # Third-party service: https://github.com/Henrik-4/unofficial-valorant-api
+
+    _endpoint = "https://api.henrikdev.xyz"
 
     def __init__(self, session: ClientSession):
         self.session = session
 
+    def unload(self) -> Awaitable:
+        return self.session.close()
+
+    def get_puuid_url(self, name: str, tag: str) -> str:
+        return f"{self._endpoint}/valorant/v1/puuid/{name}/{tag}"
+
     async def get_puuid(self, name: str, tag: str) -> str:
-        pass
+        async with self.session.get(self.get_puuid_url(name, tag)) as response:
+            data = await response.json()
+        if data["status"] != "200":
+            raise Henrik3APIError(int(data["status"]), str(data["message"]))
+        assert "data" in data, f"Could not find 'data' in data: {data}"
+        data = data["data"]
+        assert "puuid" in data, f"Could not find 'puuid' in payload: {data}"
+        puuid = data["puuid"]
+        assert isinstance(puuid, str), f"puuid is not a string: {puuid}"
+        return puuid

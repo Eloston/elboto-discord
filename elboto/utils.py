@@ -34,6 +34,6 @@ class PersistDictStorage:
     def read_json(self, key: str) -> Dict[str, Any]:
         return cast(Dict[str, Any], self._cache[key])
 
-    def write_json(self, key: str, value: Dict[str, Any]) -> None:
+    def store_json(self, key: str, value: Dict[str, Any]) -> None:
         self._cache[key] = value
         self._flush_cache()
