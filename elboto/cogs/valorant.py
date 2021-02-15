@@ -14,8 +14,12 @@ from discord.ext.typed_commands import Cog, CommandError, Context
 from elboto.base import Elboto
 from elboto.utils import DATA_DIR, PersistDictStorage
 
-from .utils.valorant_api import (Henrik3APIClient, Henrik3APIError,
-                                 RiotAPIClient, RiotAPIRegion)
+from .utils.valorant_api import (
+    Henrik3APIClient,
+    Henrik3APIError,
+    RiotAPIClient,
+    RiotAPIRegion,
+)
 
 
 def _read_ranks() -> Dict[str, str]:
@@ -74,13 +78,13 @@ class Valorant(Cog):
             self._riot_clients[region] = RiotAPIClient(region, username, password)
         return self._riot_clients[region]
 
-    @commands.group()
+    @commands.group(aliases=["valorant", "val"], invoke_without_command=True)
     async def valo(self, ctx: Context) -> None:
-        pass
+        await ctx.reply("valo: Invalid subcommand")
 
-    @valo.group(name="admin", hidden=True)
+    @valo.group(name="admin", hidden=True, invoke_without_command=True)
     async def valo_admin(self, ctx: Context) -> None:
-        pass
+        await ctx.reply("valo admin: Invalid subcommand")
 
     @valo_admin.command()
     async def forcerefresh(self, ctx: Context, region: RiotAPIRegion) -> None:

@@ -4,7 +4,7 @@ import sys
 from typing import Dict, Tuple
 
 import discord
-from discord.ext.typed_commands import Bot
+from discord.ext.typed_commands import Bot, Context
 
 _DESCRIPTION = """
 Eloston's Discord bot
@@ -39,6 +39,9 @@ class Elboto(Bot):
             except Exception as exc:
                 print(f"Failed to load extension {extension}.", file=sys.stderr)
                 print(exc)
+
+    async def on_command_error(self, ctx: Context, exception: Exception) -> None:
+        await ctx.reply(f"{exception} ({type(exception).__name__})")
 
     def start_bot(self) -> None:
         self.run(self.config.token, reconnect=True)
