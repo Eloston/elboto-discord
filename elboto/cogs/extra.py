@@ -14,6 +14,10 @@ class Extra(Cog):
     async def hello(self, ctx: Context) -> None:
         await ctx.message.add_reaction("🖖")
 
+    @commands.command()
+    async def code(self, ctx: Context) -> None:
+        await ctx.message.reply('https://github.com/Eloston/elboto-discord')
+
 
 def setup(bot: Elboto) -> None:
     bot.add_cog(Extra(bot))
