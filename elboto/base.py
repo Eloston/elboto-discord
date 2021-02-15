@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from typing import Dict, Tuple
+from typing import Dict, Iterable, Tuple, Union
 
 import discord
 from discord.ext.typed_commands import Bot, Context
@@ -17,6 +17,7 @@ class BotConfig:
     token: str
     client_id: str
     valorant_creds: Dict[str, Tuple[str, str]]
+    valorant_access_roles: Iterable[Union[str, int]]
 
 
 class Elboto(Bot):

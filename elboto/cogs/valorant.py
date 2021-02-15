@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import functools
 import io
 import json
 import sys
@@ -47,6 +48,10 @@ def _split_nametag(nametag: str) -> Tuple[str, str]:
     return name, tag
 
 
+def _is_guild_owner(ctx: Context) -> bool:
+    return ctx.guild is not None and ctx.guild.owner_id == ctx.author.id
+
+
 class Valorant(Cog):
     def __init__(self, bot: Elboto):
         self.bot = bot
@@ -55,9 +60,28 @@ class Valorant(Cog):
         self._riot_clients: Dict[RiotAPIRegion, RiotAPIClient] = dict()
         self._henrik3_client = Henrik3APIClient()
 
+    def _has_guild_roles(self, ctx: Context) -> bool:
+        if not isinstance(ctx.channel, discord.abc.GuildChannel) or not isinstance(
+            ctx.author, discord.Member
+        ):
+            return False
+
+        getter = functools.partial(discord.utils.get, ctx.author.roles)
+        if any(
+            getter(id=item) is not None
+            if isinstance(item, int)
+            else getter(name=item) is not None
+            for item in self.bot.config.valorant_access_roles
+        ):
+            return True
+        return False
+
     async def cog_check(self, ctx: Context) -> bool:
-        # TODO: Open up access to public
-        return await self.bot.is_owner(ctx.author)
+        return (
+            await self.bot.is_owner(ctx.author)
+            or _is_guild_owner(ctx)
+            or self._has_guild_roles(ctx)
+        )
 
     def cog_unload(self) -> None:
         for client in self._riot_clients.values():
@@ -82,9 +106,10 @@ class Valorant(Cog):
     async def valo(self, ctx: Context) -> None:
         await ctx.reply("valo: Invalid subcommand")
 
-    @valo.group(name="admin", hidden=True, invoke_without_command=True)
+    @valo.group(name="admin", hidden=True)
+    @commands.is_owner()
     async def valo_admin(self, ctx: Context) -> None:
-        await ctx.reply("valo admin: Invalid subcommand")
+        pass
 
     @valo_admin.command()
     async def forcerefresh(self, ctx: Context, region: RiotAPIRegion) -> None:
