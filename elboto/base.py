@@ -3,6 +3,7 @@
 import sys
 from typing import Dict, Tuple
 
+import discord
 from discord.ext.typed_commands import Bot
 
 _DESCRIPTION = """
@@ -22,8 +23,14 @@ class Elboto(Bot):
     def __init__(self, config: BotConfig):
         self.config = config
 
+        intents = discord.Intents.default()
+        intents.typing = False
+        intents.presences = False
+
         super().__init__(
-            command_prefix=self.config.command_prefix, description=_DESCRIPTION
+            command_prefix=self.config.command_prefix,
+            description=_DESCRIPTION,
+            intents=intents,
         )
 
         for extension in _STARTUP_EXTENSIONS:
