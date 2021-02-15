@@ -40,12 +40,16 @@ class RiotAPIClient:
         self._username = username
         self._password = password
 
+        # Token-related state
         self._access_token: Optional[str] = None
         self._id_token: Optional[str] = None
         self._entitlements_token: Optional[str] = None
         self._expires: Optional[datetime.datetime] = None
-
         self._refresh_lock = asyncio.Lock()
+
+        # Userinfo-related state
+        self._userinfo: Optional[Dict[str, Any]] = None
+        self._userinfo_lock = asyncio.Lock()
 
         self._make_session()
 
@@ -161,14 +165,17 @@ class RiotAPIClient:
                 await self._update_tokens()
                 assert self._are_tokens_valid(), "tokens are valid after updating"
 
-    async def get_userinfo(self) -> Dict[str, str]:
-        # Refer: https://github.com/RumbleMike/ValorantStreamOverlay/blob/4737044373e9e467468481f8965d27217260009b/LogicHandler.cs#L109-L121
-        await self.refresh_tokens()
-        async with self.session.post(
-            "https://auth.riotgames.com/userinfo",
-            headers=self._get_authorization_headers(),
-        ) as response:
-            return cast(Dict[str, str], await response.json())
+    async def get_userinfo(self) -> Dict[str, Any]:
+        async with self._userinfo_lock:
+            if self._userinfo is None:
+                # Refer: https://github.com/RumbleMike/ValorantStreamOverlay/blob/4737044373e9e467468481f8965d27217260009b/LogicHandler.cs#L109-L121
+                await self.refresh_tokens()
+                async with self.session.post(
+                    "https://auth.riotgames.com/userinfo",
+                    headers=self._get_authorization_headers(),
+                ) as response:
+                    self._userinfo = cast(Dict[str, Any], await response.json())
+            return self._userinfo
 
     async def get_mmr(
         self, puuid: str, start_index: int = 0, end_index: int = 20
@@ -222,6 +229,19 @@ class RiotAPIClient:
                     datetime.datetime.utcfromtimestamp(match["MatchStartTime"] / 1000),
                 )
         return None
+
+    async def get_nametag(self) -> Tuple[str, str]:
+        userinfo = await self.get_userinfo()
+        assert "acct" in userinfo, "Missing 'acct' in userinfo"
+        assert "state" in userinfo["acct"], "Missing account state in userinfo"
+        assert "game_name" in userinfo["acct"], "Missing game_name in userinfo"
+        assert "tag_line" in userinfo["acct"], "Missing tag_line in userinfo"
+        return userinfo["acct"]["game_name"], userinfo["acct"]["tag_line"]
+
+    async def get_puuid(self) -> str:
+        userinfo = await self.get_userinfo()
+        assert "sub" in userinfo, "Missing sub in userinfo"
+        return cast(str, userinfo["sub"])
 
 
 class Henrik3APIError(Exception):

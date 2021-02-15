@@ -48,6 +48,10 @@ def _split_nametag(nametag: str) -> Tuple[str, str]:
     return name, tag
 
 
+def _join_nametag(name: str, tag: str) -> str:
+    return f"{name}#{tag}"
+
+
 def _is_guild_owner(ctx: Context) -> bool:
     return ctx.guild is not None and ctx.guild.owner_id == ctx.author.id
 
@@ -90,7 +94,6 @@ class Valorant(Cog):
     async def cog_command_error(self, ctx: Context, error: CommandError) -> None:
         _print_context(ctx)
         traceback.print_exc()
-        await ctx.reply(f"Error executing command: `{error}`")
 
     def _get_backend_client(self, region: RiotAPIRegion) -> RiotAPIClient:
         if region not in self._riot_clients:
@@ -162,9 +165,10 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
         try:
             data = self._persist_dict.read_json(nametag)
         except KeyError:
-            ctx.reply(
+            await ctx.reply(
                 f"Unable to find `{nametag}` (case-sensitive). Please check that it is registered."
             )
+            return
         region = RiotAPIRegion(data["region"])
         assert isinstance(data["puuid"], str)
         puuid = data["puuid"]
@@ -184,7 +188,7 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
     async def register(self, ctx: Context, region: RiotAPIRegion, nametag: str) -> None:
         async with ctx.typing():
             try:
-                name, tag = nametag.split("#")
+                name, tag = _split_nametag(nametag)
             except ValueError as exc:
                 await ctx.reply(f"Invalid nametag: `{exc}`")
                 return
@@ -200,12 +204,17 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
                     return
             await self.register_puuid(ctx, nametag, region, puuid)
 
-    @valo.command(hidden=True)
+    @valo.command()
     async def register_creds(
         self, ctx: Context, region: RiotAPIRegion, username: str, password: str
     ) -> None:
-        # TODO: Techically we can derive region from userinfo
-        raise NotImplementedError()
+        riot_client = RiotAPIClient(region, username, password)
+        name, tag = await riot_client.get_nametag()
+        puuid = await riot_client.get_puuid()
+        nametag = _join_nametag(name, tag)
+        await self.register_puuid(ctx, nametag, region, puuid)
+        await ctx.reply(f"Registered {nametag} in region {region}")
+        await riot_client.unload()
 
 
 def setup(bot: Elboto) -> None:
