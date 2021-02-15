@@ -8,6 +8,8 @@ from elboto.base import Elboto
 
 
 class Admin(Cog):
+    # Inspired by: https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/admin.py
+
     def __init__(self, bot: Elboto):
         self.bot = bot
 
@@ -46,7 +48,7 @@ class Admin(Cog):
             try:
                 self.bot.reload_extension(module)
             except commands.ExtensionNotLoaded:
-                self.bot.reload_extension(f'elboto.cogs.{module}')
+                self.bot.reload_extension(f"elboto.cogs.{module}")
         except commands.ExtensionError as exc:
             await ctx.send(f"{exc.__class__.__name__}: {exc}")
         else:
@@ -70,4 +72,4 @@ def setup(bot: Elboto) -> None:
 
 
 def teardown(bot: Elboto) -> None:
-    bot.remove_cog('Admin')
+    bot.remove_cog("Admin")
