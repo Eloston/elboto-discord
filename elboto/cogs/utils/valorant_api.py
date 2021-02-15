@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+import asyncio
 import datetime
 import enum
 import json
@@ -41,6 +44,8 @@ class RiotAPIClient:
         self._id_token: Optional[str] = None
         self._entitlements_token: Optional[str] = None
         self._expires: Optional[datetime.datetime] = None
+
+        self._refresh_lock = asyncio.Lock()
 
         self._make_session()
 
@@ -136,6 +141,7 @@ class RiotAPIClient:
         self._entitlements_token = data["entitlements_token"]
 
     async def _update_tokens(self) -> None:
+        await self.session.close()
         self._make_session()
         await self._do_authorization()
         await self._update_access_token()
@@ -150,9 +156,10 @@ class RiotAPIClient:
         return f"https://shared.{self.region.value}.a.pvp.net"
 
     async def refresh_tokens(self, force: bool = False) -> None:
-        if force or not self._are_tokens_valid():
-            await self._update_tokens()
-            assert self._are_tokens_valid(), "tokens are valid after updating"
+        async with self._refresh_lock:
+            if force or not self._are_tokens_valid():
+                await self._update_tokens()
+                assert self._are_tokens_valid(), "tokens are valid after updating"
 
     async def get_userinfo(self) -> Dict[str, str]:
         # Refer: https://github.com/RumbleMike/ValorantStreamOverlay/blob/4737044373e9e467468481f8965d27217260009b/LogicHandler.cs#L109-L121
