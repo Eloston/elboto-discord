@@ -29,12 +29,10 @@ class RiotAPIClient:
 
     def __init__(
         self,
-        session: ClientSession,
         region: RiotAPIRegion,
         username: str,
         password: str,
     ):
-        self.session = session
         self.region = region
         self._username = username
         self._password = password
@@ -43,6 +41,11 @@ class RiotAPIClient:
         self._id_token: Optional[str] = None
         self._entitlements_token: Optional[str] = None
         self._expires: Optional[datetime.datetime] = None
+
+        self._make_session()
+
+    def _make_session(self) -> None:
+        self.session = ClientSession()
 
     def unload(self) -> Awaitable:
         return self.session.close()
@@ -133,6 +136,7 @@ class RiotAPIClient:
         self._entitlements_token = data["entitlements_token"]
 
     async def _update_tokens(self) -> None:
+        self._make_session()
         await self._do_authorization()
         await self._update_access_token()
         await self._update_entitlement_token()
@@ -225,23 +229,18 @@ class Henrik3APIClient:
 
     _endpoint = "https://api.henrikdev.xyz"
 
-    def __init__(self, session: ClientSession):
-        self.session = session
-
-    def unload(self) -> Awaitable:
-        return self.session.close()
-
     def get_puuid_url(self, name: str, tag: str) -> str:
         return f"{self._endpoint}/valorant/v1/puuid/{name}/{tag}"
 
     async def get_puuid(self, name: str, tag: str) -> str:
-        async with self.session.get(self.get_puuid_url(name, tag)) as response:
-            data = await response.json()
-        if data["status"] != "200":
-            raise Henrik3APIError(int(data["status"]), str(data["message"]))
-        assert "data" in data, f"Could not find 'data' in data: {data}"
-        data = data["data"]
-        assert "puuid" in data, f"Could not find 'puuid' in payload: {data}"
-        puuid = data["puuid"]
-        assert isinstance(puuid, str), f"puuid is not a string: {puuid}"
-        return puuid
+        async with ClientSession() as session:
+            async with session.get(self.get_puuid_url(name, tag)) as response:
+                data = await response.json()
+            if data["status"] != "200":
+                raise Henrik3APIError(int(data["status"]), str(data["message"]))
+            assert "data" in data, f"Could not find 'data' in data: {data}"
+            data = data["data"]
+            assert "puuid" in data, f"Could not find 'puuid' in payload: {data}"
+            puuid = data["puuid"]
+            assert isinstance(puuid, str), f"puuid is not a string: {puuid}"
+            return puuid

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import asyncio
 import io
 import json
 import sys
 import traceback
 from typing import Dict, Tuple, cast
 
-import aiohttp
 import discord
 import discord.ext.typed_commands as commands
 from discord.ext.typed_commands import Cog, CommandError, Context
@@ -14,12 +14,8 @@ from discord.ext.typed_commands import Cog, CommandError, Context
 from elboto.base import Elboto
 from elboto.utils import DATA_DIR, PersistDictStorage
 
-from .utils.valorant_api import (
-    Henrik3APIClient,
-    Henrik3APIError,
-    RiotAPIClient,
-    RiotAPIRegion,
-)
+from .utils.valorant_api import (Henrik3APIClient, Henrik3APIError,
+                                 RiotAPIClient, RiotAPIRegion)
 
 
 def _read_ranks() -> Dict[str, str]:
@@ -53,7 +49,7 @@ class Valorant(Cog):
 
         self._persist_dict = PersistDictStorage("valorant")
         self._riot_clients: Dict[RiotAPIRegion, RiotAPIClient] = dict()
-        self._henrik3_client = Henrik3APIClient(aiohttp.ClientSession())
+        self._henrik3_client = Henrik3APIClient()
 
     async def cog_check(self, ctx: Context) -> bool:
         # TODO: Open up access to public
@@ -61,8 +57,7 @@ class Valorant(Cog):
 
     def cog_unload(self) -> None:
         for client in self._riot_clients.values():
-            self.bot.loop.create_task(client.unload())
-        self.bot.loop.create_task(self._henrik3_client.unload())
+            asyncio.run_coroutine_threadsafe(client.unload(), self.bot.loop)
 
     async def cog_command_error(self, ctx: Context, error: CommandError) -> None:
         _print_context(ctx)
@@ -76,9 +71,7 @@ class Valorant(Cog):
                 raise CommandError(
                     f"Username or password is invalid for region {region}"
                 )
-            self._riot_clients[region] = RiotAPIClient(
-                aiohttp.ClientSession(), region, username, password
-            )
+            self._riot_clients[region] = RiotAPIClient(region, username, password)
         return self._riot_clients[region]
 
     @commands.group()
@@ -176,8 +169,14 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
 2. Run the following command (replacing `PUUID_HERE`): `{ctx.prefix}{self.register_puuid.qualified_name} {nametag} {region.value} PUUID_HERE`"""
                     )
                     return
-            self._store_puuid(nametag, region, puuid)
-            await ctx.message.add_reaction("\N{OK HAND SIGN}")
+            await self.register_puuid(ctx, nametag, region, puuid)
+
+    @valo.command(hidden=True)
+    async def register_creds(
+        self, ctx: Context, region: RiotAPIRegion, username: str, password: str
+    ) -> None:
+        # TODO: Techically we can derive region from userinfo
+        raise NotImplementedError()
 
 
 def setup(bot: Elboto) -> None:
