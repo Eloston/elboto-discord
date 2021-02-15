@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict, Iterable, cast
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -37,3 +37,6 @@ class PersistDictStorage:
     def store_json(self, key: str, value: Dict[str, Any]) -> None:
         self._cache[key] = value
         self._flush_cache()
+
+    def keys(self) -> Iterable[str]:
+        return self._cache.keys()

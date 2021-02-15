@@ -6,7 +6,7 @@ import io
 import json
 import sys
 import traceback
-from typing import Dict, Tuple, cast
+from typing import Dict, Optional, Tuple, cast
 
 import discord
 import discord.ext.typed_commands as commands
@@ -15,12 +15,8 @@ from discord.ext.typed_commands import Cog, CommandError, Context
 from elboto.base import Elboto
 from elboto.utils import DATA_DIR, PersistDictStorage
 
-from .utils.valorant_api import (
-    Henrik3APIClient,
-    Henrik3APIError,
-    RiotAPIClient,
-    RiotAPIRegion,
-)
+from .utils.valorant_api import (Henrik3APIClient, Henrik3APIError,
+                                 RiotAPIClient, RiotAPIRegion)
 
 
 def _read_ranks() -> Dict[str, str]:
@@ -125,6 +121,21 @@ class Valorant(Cog):
         async with ctx.typing():
             data = await self._get_backend_client(region).get_userinfo()
             await ctx.reply(f"""```json\n{json.dumps(data, indent=2)}\n```""")
+
+    @valo_admin.command()
+    async def list(self, ctx: Context, *, region: Optional[RiotAPIRegion] = None) -> None:
+        filtered_nametags = None
+        msg = ""
+        if region is None:
+            msg = "All registrations:\n"
+            filtered_nametags = self._persist_dict.keys()
+        else:
+            msg = f"Registrations in {region.upper()}:\n"
+            filtered_nametags = tuple(filter(lambda x: self._persist_dict.read_json(x)["region"] == region, self._persist_dict.keys()))
+        if filtered_nametags:
+            await ctx.reply(msg + "\n".join(f"`{nametag}`" for nametag in sorted(filtered_nametags)))
+        else:
+            await ctx.reply(msg + "No registered nametags")
 
     @valo.command()
     async def mmr(
