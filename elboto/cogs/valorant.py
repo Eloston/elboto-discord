@@ -196,7 +196,7 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
         await ctx.message.add_reaction("\N{OK HAND SIGN}")
 
     @valo.command()
-    async def register(self, ctx: Context, region: RiotAPIRegion, nametag: str) -> None:
+    async def register(self, ctx: Context, nametag: str) -> None:
         async with ctx.typing():
             try:
                 name, tag = _split_nametag(nametag)
@@ -204,12 +204,12 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
                 await ctx.reply(f"Invalid nametag: `{exc}`")
                 return
             try:
-                puuid = await self._henrik3_client.get_puuid(name, tag)
+                region, puuid = await self._henrik3_client.get_puuid(name, tag)
             except Henrik3APIError as exc:
                 if exc.code == 429:
                     await ctx.reply(
                         f"""Exceeded rate limit to get PUUID. Please take these steps instead:
-1. Copy `puuid` field from: {self._henrik3_client.get_puuid_url(name, tag)}
+1. Copy `puuid` field from: {self._henrik3_client.get_account_url(name, tag)}
 2. Run the following command (replacing `PUUID_HERE`): `{ctx.prefix}{self.register_puuid.qualified_name} {nametag} {region.value} PUUID_HERE`"""
                     )
                     return

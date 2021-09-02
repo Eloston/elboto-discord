@@ -256,18 +256,21 @@ class Henrik3APIClient:
 
     _endpoint = "https://api.henrikdev.xyz"
 
-    def get_puuid_url(self, name: str, tag: str) -> str:
-        return f"{self._endpoint}/valorant/v1/puuid/{name}/{tag}"
+    def get_account_url(self, name: str, tag: str) -> str:
+        return f"{self._endpoint}/valorant/v1/account/{name}/{tag}"
 
-    async def get_puuid(self, name: str, tag: str) -> str:
+    async def get_puuid(self, name: str, tag: str) -> Tuple[RiotAPIRegion, str]:
         async with ClientSession() as session:
-            async with session.get(self.get_puuid_url(name, tag)) as response:
+            async with session.get(self.get_account_url(name, tag)) as response:
                 data = await response.json()
+            assert "status" in data, f"Could not find 'status' in data: {data}"
             if data["status"] != "200":
                 raise Henrik3APIError(int(data["status"]), str(data["message"]))
             assert "data" in data, f"Could not find 'data' in data: {data}"
             data = data["data"]
+            assert "region" in data, f"Could not find 'region' in data: {data}"
+            region = RiotAPIRegion(data["region"])
             assert "puuid" in data, f"Could not find 'puuid' in payload: {data}"
             puuid = data["puuid"]
             assert isinstance(puuid, str), f"puuid is not a string: {puuid}"
-            return puuid
+            return region, puuid
