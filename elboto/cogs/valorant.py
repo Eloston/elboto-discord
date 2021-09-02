@@ -173,12 +173,12 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
 
     @valo.command()
     async def rank(self, ctx: Context, nametag: str) -> None:
+        if nametag not in self._persist_dict.keys():
+            await self.register(ctx, nametag)
         try:
             data = self._persist_dict.read_json(nametag)
         except KeyError:
-            await ctx.reply(
-                f"Unable to find `{nametag}` (case-sensitive). Please check that it is registered."
-            )
+            # Registration still failed, and registration printed error message already.
             return
         region = RiotAPIRegion(data["region"])
         assert isinstance(data["puuid"], str)
