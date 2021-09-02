@@ -213,6 +213,7 @@ Updated (UTC): {match_start_time.strftime('%c')}"""
 2. Run the following command (replacing `PUUID_HERE`): `{ctx.prefix}{self.register_puuid.qualified_name} {nametag} {region.value} PUUID_HERE`"""
                     )
                     return
+                raise exc
             await self.register_puuid(ctx, nametag, region, puuid)
 
     @valo.command()
